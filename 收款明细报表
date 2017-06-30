@@ -1,0 +1,72 @@
+SELECT
+    ORG_SALESORG.NAME                                       SALEORGNAME
+,   (
+        CASE
+            WHEN
+                (
+                    AR_GATHERITEM.PREPAY    =   0
+                )
+            THEN
+                '应收款'
+            WHEN
+                (
+                    AR_GATHERITEM.PREPAY    =   1
+                )
+            THEN
+                '预收款'
+        END
+    )                                                       PREPAY
+,   SUBSTR(AR_GATHERITEM.BILLDATE, 1, 10)                   BILLDATE
+,   DEFDOC.NAME                                             DEF6
+,   MARBASCLASS.NAME                                        DEF5
+,   NVL(BD_CUSTOMER.NAME, '（未指定）')                      CUSNAME
+,   AR_GATHERITEM.PK_GROUP                                  PK_GROUP
+,   AR_GATHERITEM.PK_ORG                                    PK_ORG
+,   NVL(BD_CUSTOMER.CODE, '（未指定）')                      CUSTOMERCODE
+,   AR_GATHERITEM.LOCAL_MONEY_CR                            LOCAL_MONEY_CR
+,   NVL(SUBSTR(BD_CUSTSALECLASS.CODE, 1, 4), '（未指定）')   SALESCLASSCODE
+,   BD_CUSTSALECLASS.CODE                                   CLASSCODE
+,   BD_CUSTSALECLASS.NAME                                   SALESCLASSNAME
+,   NVL(BD_PSNDOC.NAME, '（未指定）')                        SALESMANNAME
+,   NVL(BD_PSNDOC.CODE, '（未指定）')                        SALESMANCODE
+FROM
+    AR_GATHERITEM   AR_GATHERITEM
+LEFT JOIN
+    AR_GATHERBILL   AR_GATHERBILL
+ON
+    AR_GATHERITEM.PK_GATHERBILL =   AR_GATHERBILL.PK_GATHERBILL
+LEFT JOIN
+    ORG_SALESORG    ORG_SALESORG
+ON
+    AR_GATHERITEM.SO_ORG    =   ORG_SALESORG.PK_SALESORG
+LEFT JOIN
+    BD_CUSTSALE BD_CUSTSALE
+ON
+    AR_GATHERITEM.CUSTOMER  ||  AR_GATHERITEM.SO_ORG    =   BD_CUSTSALE.PK_CUSTOMER ||  BD_CUSTSALE.PK_ORG
+LEFT JOIN
+    BD_CUSTOMER BD_CUSTOMER
+ON
+    AR_GATHERITEM.CUSTOMER  =   BD_CUSTOMER.PK_CUSTOMER
+LEFT JOIN
+    BD_CUSTSALECLASS    BD_CUSTSALECLASS
+ON
+    BD_CUSTSALE.PK_CUSTSALECLASS    =   BD_CUSTSALECLASS.PK_CUSTSALECLASS
+LEFT JOIN
+    BD_PSNDOC   BD_PSNDOC
+ON
+    BD_CUSTSALE.RESPPERSON  =   BD_PSNDOC.PK_PSNDOC
+LEFT JOIN
+    BD_DEFDOC   DEFDOC
+ON
+    AR_GATHERITEM.DEF6  =   DEFDOC.PK_DEFDOC
+LEFT JOIN
+    BD_MARBASCLASS  MARBASCLASS
+ON
+    AR_GATHERITEM.DEF5  =   MARBASCLASS.PK_MARBASCLASS
+WHERE
+    AR_GATHERITEM.DR                                =   0
+AND AR_GATHERBILL.ISINIT                            =   'N'
+AND TODATE(SUBSTR(AR_GATHERITEM.BILLDATE, 1, 10))   >=  (TODATE(SUBSTR(PARAMETER('startbilldate'), 1, 10)))
+AND TODATETIME(AR_GATHERITEM.BILLDATE)              <=  TODATETIME(TOSTRING(SUBSTR(PARAMETER('endbilldate'), 1, 10))    ||  ' 23:59:59')
+AND ORG_SALESORG.CODE                               IN  (PARAMETER('saleorg'))
+AND SUBSTR(BD_CUSTSALECLASS.CODE, 1, 4)             IN  (PARAMETER('saleclasscode'))
